@@ -57,7 +57,7 @@ std::vector<T> generate_random_vector(size_t size, size_t seed)
     else if constexpr (std::is_integral<T>::value)
     {
         // Rescaling by larger than 2 is UB!
-        std::uniform_int_distribution<T> dis(std::numeric_limits<T>::lowest()/2, std::numeric_limits<T>::max()/2);
+        std::uniform_int_distribution<T> dis(std::numeric_limits<T>::lowest()/2, (std::numeric_limits<T>::max)()/2);
         for (size_t i = 0; i < v.size(); ++i)
         {
          v[i] = dis(gen);
@@ -124,6 +124,17 @@ void test_integer_mean()
     BOOST_TEST(abs(m1 - m2) < tol*abs(m1));
 }
 
+template<class RandomAccessContainer>
+auto naive_mean(RandomAccessContainer const & v)
+{
+    typename RandomAccessContainer::value_type sum = 0;
+    for (auto & x : v)
+    {
+        sum += x;
+    }
+    return sum/v.size();
+}
+
 template<class Real>
 void test_mean()
 {
@@ -172,6 +183,23 @@ void test_mean()
     }
     Real m2 = boost::math::tools::mean(v);
     BOOST_TEST(abs(m1 - m2) < tol*abs(m1));
+
+    // Stress test:
+    for (size_t i = 1; i < 30; ++i)
+    {
+        v = generate_random_vector<Real>(i, 12803);
+        auto naive_ = naive_mean(v);
+        auto higham_ = boost::math::tools::mean(v);
+        if (abs(higham_ - naive_) >= 100*tol*abs(naive_))
+        {
+            std::cout << std::hexfloat;
+            std::cout << "Terms = " << v.size() << "\n";
+            std::cout << "higham = " << higham_ << "\n";
+            std::cout << "naive_ = " << naive_ << "\n";
+        }
+        BOOST_TEST(abs(higham_ - naive_) < 100*tol*abs(naive_));
+    }
+
 }
 
 template<class Complex>
